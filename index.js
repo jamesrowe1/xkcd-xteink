@@ -8,7 +8,7 @@ const path = require("path");
 // ============================================================
 
 // Number of XKCD wallpapers to create.
-const TARGET_COUNT = 500;
+const TARGET_COUNT = 750;
 
 // Xteink X4 portrait screen resolution.
 const CANVAS_W = 480;
@@ -27,7 +27,7 @@ const MARGIN = 20;
 // The Reddit thread mentions changing this to 1.01
 // if you want only comics whose height is roughly equal
 // to or greater than their width.
-const MAX_ASPECT = 1.3;
+const MAX_ASPECT = 1.8;
 
 // Small pause between requests so we don't hammer XKCD.
 const REQUEST_DELAY_MS = 150;
@@ -230,21 +230,29 @@ async function processComic(comic, index) {
     const imageBuffer =
         await downloadImage(comic.img);
 
-    // Remove surrounding whitespace where possible.
-    let source = sharp(imageBuffer)
+    // --------------------------------------------------------
+    // First clean up the original comic.
+    // Flatten transparency onto white and trim empty borders.
+    // --------------------------------------------------------
+
+    const trimmedBuffer = await sharp(imageBuffer)
         .flatten({
             background: "#ffffff"
         })
         .trim({
             background: "#ffffff",
             threshold: 10
-        });
+        })
+        .png()
+        .toBuffer();
 
     const metadata =
-        await source.metadata();
+        await sharp(trimmedBuffer).metadata();
 
     if (!metadata.width || !metadata.height) {
-        throw new Error("Unable to determine image dimensions");
+        throw new Error(
+            "Unable to determine image dimensions"
+        );
     }
 
     const aspect =
@@ -260,51 +268,76 @@ async function processComic(comic, index) {
         return false;
     }
 
-    // Maximum area available for the comic.
+    // --------------------------------------------------------
+    // Available area inside our margins
+    // --------------------------------------------------------
+
     const availableWidth =
         CANVAS_W - MARGIN * 2;
 
     const availableHeight =
         CANVAS_H - MARGIN * 2;
 
-    // Create final X4-sized image.
+    // --------------------------------------------------------
+    // Resize the comic ONCE.
     //
-    // contain = preserve aspect ratio
-    // background = white margins
+    // This produces an image no larger than 440x760 while
+    // retaining its original aspect ratio.
+    // --------------------------------------------------------
+
+    const resizedComic =
+        await sharp(trimmedBuffer)
+            .resize({
+                width: availableWidth,
+                height: availableHeight,
+                fit: "inside",
+                withoutEnlargement: true
+            })
+            .grayscale()
+            .normalize()
+            .png()
+            .toBuffer();
+
+    // --------------------------------------------------------
+    // Create a completely separate 480x800 white canvas,
+    // then place the resized comic in the center.
     //
-    // We convert to grayscale because the display is e-ink.
+    // This avoids Sharp's multiple-resize behavior entirely.
+    // --------------------------------------------------------
+
     const {
         data,
         info
-    } = await source
-        .grayscale()
-        .normalize()
-        .resize({
-            width: availableWidth,
-            height: availableHeight,
-            fit: "contain",
-            background: "#ffffff",
-            withoutEnlargement: true
-        })
-        .extend({
-            top: MARGIN,
-            bottom: MARGIN,
-            left: MARGIN,
-            right: MARGIN,
-            background: "#ffffff"
-        })
-        .resize({
+    } = await sharp({
+        create: {
             width: CANVAS_W,
             height: CANVAS_H,
-            fit: "contain",
-            background: "#ffffff"
-        })
+            channels: 3,
+            background: {
+                r: 255,
+                g: 255,
+                b: 255
+            }
+        }
+    })
+        .composite([
+            {
+                input: resizedComic,
+                gravity: "center"
+            }
+        ])
         .removeAlpha()
-        .toColourspace("srgb")
         .raw()
         .toBuffer({
             resolveWithObject: true
         });
+
+    // --------------------------------------------------------
+    // Verify that we're feeding the BMP writer exactly:
+    //
+    // 480 x 800
+    // 3-channel RGB
+    // --------------------------------------------------------
 
     if (
         info.width !== CANVAS_W ||

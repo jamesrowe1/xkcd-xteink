@@ -15,7 +15,7 @@ const CANVAS_W = 480;
 const CANVAS_H = 800;
 
 // Space around the comic.
-const MARGIN = 20;
+const MARGIN = 5;
 
 // Ignore extremely wide XKCD comics.
 // width / height

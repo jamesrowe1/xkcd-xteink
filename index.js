@@ -27,7 +27,7 @@ const MARGIN = 20;
 // The Reddit thread mentions changing this to 1.01
 // if you want only comics whose height is roughly equal
 // to or greater than their width.
-const MAX_ASPECT = 1.8;
+const MAX_ASPECT = 1.3;
 
 // Small pause between requests so we don't hammer XKCD.
 const REQUEST_DELAY_MS = 150;

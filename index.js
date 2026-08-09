@@ -8,7 +8,7 @@ const path = require("path");
 // ============================================================
 
 // Number of XKCD wallpapers to create.
-const TARGET_COUNT = 750;
+const TARGET_COUNT = 500;
 
 // Xteink X4 portrait screen resolution.
 const CANVAS_W = 480;
@@ -27,7 +27,7 @@ const MARGIN = 5;
 // The Reddit thread mentions changing this to 1.01
 // if you want only comics whose height is roughly equal
 // to or greater than their width.
-const MAX_ASPECT = 1.3;
+const MAX_ASPECT = 1.2;
 
 // Small pause between requests so we don't hammer XKCD.
 const REQUEST_DELAY_MS = 150;

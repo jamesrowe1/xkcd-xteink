@@ -291,7 +291,7 @@ async function processComic(comic, index) {
                 width: availableWidth,
                 height: availableHeight,
                 fit: "inside",
-                withoutEnlargement: true
+                withoutEnlargement: false
             })
             .grayscale()
             .normalize()
